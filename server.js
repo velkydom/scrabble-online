@@ -10,7 +10,6 @@ app.use(express.static("public"));
 
 const PORT = process.env.PORT || 3000;
 
-// slovenská abeceda s vyšším počtom samohlások
 const LETTERS = "AAAAAAAAÁÁÁÁBBBBCCČČDDDĎĎEEEEEEEEÉÉFFGGHHCHCHIIIIÍÍÍJJKKLLĽĽMMNNOOOOOOOÓÓPPQRRŘSSŠŠTTŤŤUUUUÚÚVVWWXXYYÝÝZZŽŽ";
 
 function getRandomRack(size = 7) {
@@ -45,7 +44,9 @@ io.on("connection", (socket) => {
       return;
     }
 
+    // Kontrola súvislosti (bez medzier medzi písmenami)
     if (sameRow) {
+      const row = rows[0];
       const minC = Math.min(...cols), maxC = Math.max(...cols);
       for (let c = minC; c <= maxC; c++) {
         if (!tiles.find(t => t.col === c)) {
@@ -54,6 +55,7 @@ io.on("connection", (socket) => {
         }
       }
     } else {
+      const col = cols[0];
       const minR = Math.min(...rows), maxR = Math.max(...rows);
       for (let r = minR; r <= maxR; r++) {
         if (!tiles.find(t => t.row === r)) {

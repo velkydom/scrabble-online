@@ -2,6 +2,7 @@ const socket = io();
 let board = [];
 let rack = [];
 let selectedLetter = null;
+let placed = [];
 
 const boardEl = document.getElementById("board");
 const rackEl = document.getElementById("rack");
@@ -67,8 +68,6 @@ function renderRack() {
     rackEl.appendChild(span);
   });
 }
-
-let placed = [];
 
 submitBtn.addEventListener("click", () => {
   if (placed.length > 0) {

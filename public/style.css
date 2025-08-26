@@ -14,7 +14,7 @@ body {
 
 #board {
   border-collapse: collapse;
-  margin: 10px auto;
+  margin: 20px auto; /* grid vycentrovaný */
 }
 
 #board td {

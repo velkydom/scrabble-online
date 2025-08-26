@@ -1,5 +1,5 @@
 {
-  "name": "scrabble-online",
+  "name": "scrabble-fixed-v1",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
