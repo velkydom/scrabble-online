@@ -1,151 +1,17 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="sk">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Scrabble SK – Online (2 hráči)</title>
-<style>
-  body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#0b1220;color:#e6eef6;margin:0;padding:16px}
-  .top{display:flex;gap:12px;align-items:center}
-  input,button{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:#0f1724;color:#fff}
-  #board{display:grid;grid-template-columns:repeat(15,28px);gap:3px;margin-top:14px}
-  .cell{width:28px;height:28px;border-radius:4px;background:#0c1624;display:flex;align-items:center;justify-content:center;font-weight:700}
-  .cell.p{background:#07263a;color:#fff;font-size:13px}
-  #rack{display:flex;gap:8px;margin-top:12px}
-  .tile{padding:8px;border-radius:8px;background:#fef3c7;color:#111;font-weight:800;cursor:pointer}
-  .tile.selected{outline:3px solid #34d399}
-  .controls{margin-top:12px;display:flex;gap:8px}
-  #log{margin-top:12px;height:140px;overflow:auto;background:#08101a;padding:8px;border-radius:8px}
-  .muted{color:#9aa6b2;font-size:13px}
-</style>
+<meta charset="UTF-8">
+<title>Scrabble Online</title>
+<link rel="stylesheet" href="style.css">
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <h2>Scrabble SK – Online (2 hráči)</h2>
-  <div id="joinBox" class="top">
-    <input id="roomId" placeholder="ID miestnosti (napr. room123)"/>
-    <input id="name" placeholder="Tvoje meno (voliteľné)"/>
-    <button id="joinBtn">Pripojiť sa</button>
-    <span class="muted">Po pripojení otvor stránku aj na druhom počítači a zadajte rovnaké ID.</span>
-  </div>
-
-  <div id="game" style="display:none">
-    <div class="muted">Na ťahu: <span id="turnInfo"></span></div>
-    <div id="board"></div>
-    <div id="rack" title="Klikni na písmeno, potom klikni na políčko na doske"></div>
-    <div class="controls">
-      <button id="undoBtn">Vrátiť ťah (pred potvrdením)</button>
-      <button id="commitBtn">Potvrdiť ťah</button>
-      <button id="swapBtn">Vymeniť písmená</button>
-    </div>
-    <div style="margin-top:12px">
-      Hráč 1: <span id="p1score">0</span> — Hráč 2: <span id="p2score">0</span> | Vrecúško: <span id="bagCount">0</span>
-    </div>
-    <div id="log"></div>
-  </div>
-
-<script src="/socket.io/socket.io.js"></script>
-<script>
-const socket = io();
-let myIndex = null;
-let roomState = null;
-let selectedTile = null;
-let placedThisTurn = [];
-let myName = '';
-
-document.getElementById('joinBtn').onclick = () => {
-  const roomId = document.getElementById('roomId').value.trim();
-  myName = document.getElementById('name').value.trim() || 'Hráč';
-  if(!roomId){ alert('Zadaj ID miestnosti'); return; }
-  socket.emit('join', { roomId, name: myName });
-};
-
-socket.on('init', ({playerIndex, state}) => {
-  myIndex = playerIndex;
-  roomState = state;
-  document.getElementById('joinBox').style.display='none';
-  document.getElementById('game').style.display='block';
-  addLog('Pripojené ako hráč ' + (myIndex+1));
-  renderState(state);
-});
-
-socket.on('state', (state) => { roomState = state; renderState(state); });
-socket.on('move_rejected', msg => { alert('Ťah nebol prijatý: '+msg); rollbackLocal(); });
-socket.on('error_msg', msg => { alert(msg); });
-
-function renderState(state){
-  const boardEl = document.getElementById('board'); boardEl.innerHTML = '';
-  for(let r=0;r<15;r++){
-    for(let c=0;c<15;c++){
-      const cell = document.createElement('div');
-      cell.className='cell';
-      cell.dataset.r=r; cell.dataset.c=c;
-      const tile = state.board[r] && state.board[r][c];
-      if(tile){ cell.textContent = tile.ch==='ŽOLÍK' ? (tile.blankLetter||'□') : tile.ch; cell.classList.add('p'); }
-      else {
-        const mult = state.premiums ? state.premiums[r][c] : null;
-        if(mult && mult !== 'N'){ cell.textContent = mult; cell.style.fontSize='9px'; } else cell.textContent='';
-      }
-      cell.onclick = onCellClick;
-      boardEl.appendChild(cell);
-    }
-  }
-  const rackEl = document.getElementById('rack'); rackEl.innerHTML = '';
-  const myRack = state.racks && myIndex !== null ? state.racks[myIndex] : [];
-  myRack.forEach(t => {
-    const b = document.createElement('div'); b.className='tile'; b.dataset.id = t.id; b.dataset.ch = t.ch;
-    b.textContent = t.ch==='ŽOLÍK' ? (t.blankLetter||'□') : t.ch;
-    b.onclick = () => {
-      if(selectedTile && selectedTile.id === t.id){ selectedTile = null; b.classList.remove('selected'); return; }
-      selectedTile = t;
-      document.querySelectorAll('.tile').forEach(x=>x.classList.remove('selected'));
-      b.classList.add('selected');
-    };
-    rackEl.appendChild(b);
-  });
-
-  document.getElementById('turnInfo').textContent = 'Hráč ' + (state.turn+1);
-  document.getElementById('p1score').textContent = state.scores[0];
-  document.getElementById('p2score').textContent = state.scores[1];
-  document.getElementById('bagCount').textContent = state.bagCount;
-
-  for(const p of placedThisTurn){
-    const sel = document.querySelector(`.cell[data-r="${p.r}"][data-c="${p.c}"]`);
-    if(sel){ sel.textContent = p.ch; sel.classList.add('p'); sel.style.outline = '2px solid #34d399'; }
-  }
-}
-
-function onCellClick(e){
-  const r = +this.dataset.r, c = +this.dataset.c;
-  if(roomState.turn !== myIndex){ addLog('Nie si na ťahu'); return; }
-  if(!selectedTile){ addLog('Vyber písmeno zo stojana'); return; }
-  if(roomState.board[r] && roomState.board[r][c]){ addLog('Políčko už obsadené'); return; }
-  if(placedThisTurn.some(p => p.r===r && p.c===c)){ addLog('Tam už máš položené písmeno'); return; }
-  const ch = selectedTile.ch;
-  placedThisTurn.push({ r, c, ch, blankLetter: selectedTile.blankLetter || null });
-  document.querySelectorAll('.tile').forEach(t => { if(t.dataset.id === selectedTile.id) t.style.opacity = 0.25; });
-  selectedTile = null;
-  document.querySelectorAll('.tile').forEach(x=>x.classList.remove('selected'));
-  renderState(roomState);
-}
-
-document.getElementById('undoBtn').onclick = rollbackLocal;
-function rollbackLocal(){ placedThisTurn = []; document.querySelectorAll('.tile').forEach(t=>t.style.opacity=1); renderState(roomState); }
-
-document.getElementById('commitBtn').onclick = () => {
-  if(placedThisTurn.length===0){ alert('Nemáš položené žiadne písmená'); return; }
-  const roomId = document.getElementById('roomId').value.trim();
-  socket.emit('commit_move', { roomId, placements: placedThisTurn });
-  placedThisTurn = []; document.querySelectorAll('.tile').forEach(t=>t.style.opacity=1);
-};
-
-document.getElementById('swapBtn').onclick = () => {
-  const letters = prompt('Zadaj písmená ktoré chceš vymeniť (napr. ABC):','');
-  if(!letters) return;
-  const roomId = document.getElementById('roomId').value.trim();
-  socket.emit('swap', { roomId, letters });
-};
-
-function addLog(msg){ const el = document.getElementById('log'); const time = new Date().toLocaleTimeString(); el.innerHTML = `<div>[${time}] ${msg}</div>` + el.innerHTML; }
-</script>
+<div id="game-container">
+  <table id="board"></table>
+  <div id="rack"></div>
+  <div id="messages"></div>
+</div>
+<script src="client.js"></script>
 </body>
 </html>
