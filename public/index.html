@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-<meta charset="UTF-8">
-<title>Scrabble Online</title>
-<link rel="stylesheet" href="style.css">
-<script src="/socket.io/socket.io.js"></script>
+  <meta charset="UTF-8">
+  <title>Scrabble Online</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="game-container">
-  <table id="board"></table>
-  <div id="rack"></div>
-  <div id="messages"></div>
-</div>
-<script src="client.js"></script>
+  <div id="game-container">
+    <h1>Scrabble Online</h1>
+    <div id="scores"></div>
+    <table id="board"></table>
+    <div id="rack"></div>
+    <button id="submit">Potvrdiť ťah</button>
+    <div id="messages"></div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
 </body>
 </html>
